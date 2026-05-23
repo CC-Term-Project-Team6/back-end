@@ -83,11 +83,27 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # 파트 B 호출 (Container App 배포 후 아래 mock 코드를 실제 호출로 교체)
-    label = "normal"
-    risk_level = None
-    confidence = 0.0
-    reason = []
+    request_id = str(uuid.uuid4())
 
+    try:
+        response = requests.post(
+            f"{os.environ['CONTAINER_APP_URL']}/analyze",
+            json={"request_id": request_id, "text": text},
+            timeout=30
+        )
+        response.raise_for_status()
+        b_result = response.json()
+        label = b_result["label"]
+        risk_level = b_result["risk_level"]
+        confidence = b_result["confidence"]
+        reason = b_result["reason"]
+    except Exception as e:
+        logging.error(f"Part B call failed: {e}")
+        return func.HttpResponse(
+            json.dumps({"error": "AI analysis failed"}),
+            status_code=500,
+            mimetype="application/json",
+        )
     try:
         conn = pyodbc.connect(os.environ["SQL_CONNECTION_STRING"])
         cursor = conn.cursor()
@@ -109,7 +125,7 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
             mimetype="application/json",
         )
-
+    
     return func.HttpResponse(
         json.dumps(
             {"id": record_id, "input_type": input_type, "label": label, "risk_level": risk_level, "confidence": confidence, "reason": reason},
