@@ -83,20 +83,21 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # 파트 B 호출 (Container App 배포 후 아래 mock 코드를 실제 호출로 교체)
-    result = "normal"
+    label = "normal"
+    risk_level = None
     confidence = 0.0
-    reasons = []
+    reason = []
 
     try:
         conn = pyodbc.connect(os.environ["SQL_CONNECTION_STRING"])
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO analyses (input_type, original_text, blob_url, result, confidence, reasons)
+            INSERT INTO analyses (input_type, original_text, blob_url, label, confidence, reason, risk_level)
             OUTPUT INSERTED.id
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            input_type, text, blob_url, result, confidence, json.dumps(reasons),
+            input_type, text, blob_url, label, confidence, json.dumps(reason), risk_level,
         )
         record_id = cursor.fetchone()[0]
         conn.commit()
@@ -111,7 +112,7 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(
         json.dumps(
-            {"id": record_id, "input_type": input_type, "result": result, "confidence": confidence, "reasons": reasons},
+            {"id": record_id, "input_type": input_type, "label": label, "risk_level": risk_level, "confidence": confidence, "reason": reason},
             ensure_ascii=False,
         ),
         mimetype="application/json",
@@ -139,7 +140,7 @@ def history(req: func.HttpRequest) -> func.HttpResponse:
 
         cursor.execute(
             """
-            SELECT id, input_type, original_text, result, confidence, reasons, created_at
+            SELECT id, input_type, original_text, label, risk_level, confidence, reason, created_at
             FROM analyses
             ORDER BY created_at DESC
             OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -155,7 +156,7 @@ def history(req: func.HttpRequest) -> func.HttpResponse:
 
         items = [dict(zip(columns, row)) for row in rows]
         for item in items:
-            item["reasons"] = json.loads(item["reasons"] or "[]")
+            item["reason"] = json.loads(item["reason"] or "[]")
 
     except Exception as e:
         logging.error(f"SQL error: {e}")

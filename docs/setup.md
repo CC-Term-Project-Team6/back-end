@@ -35,6 +35,7 @@ winget install Microsoft.msodbcsql.18
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Azure Functions Core Tools v4
+brew tap azure/functions
 brew install azure-functions-core-tools@4
 
 # ODBC Driver 18

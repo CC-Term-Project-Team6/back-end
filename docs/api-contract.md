@@ -4,10 +4,22 @@
 
 ---
 
+## 진행 현황
+
+| 기능 | 담당 | 상태 |
+|---|---|---|
+| POST /api/analyze — 텍스트 입력 | 파트 C | ✅ |
+| POST /api/analyze — 이미지 입력 (OCR) | 파트 C | ✅ |
+| GET /api/history | 파트 C | ✅ |
+| POST /predict (AI 모델) | 파트 B | ⏳ |
+| 프론트엔드 연동 | 파트 A | ⏳ |
+
+---
+
 ## 파트 C 공개 API (파트 A가 호출)
 
 Base URL (로컬): `http://localhost:7071/api`  
-Base URL (배포 후): Azure Functions URL
+Base URL (배포 후): `https://smishingdet-functions.azurewebsites.net/api`
 
 ### POST /api/analyze
 
@@ -34,14 +46,16 @@ Body:
 {
   "id": 123,
   "input_type": "image",
-  "result": "spam",
+  "label": "spam",
+  "risk_level": "high",
   "confidence": 0.95,
-  "reasons": ["URL 포함", "금융 관련 키워드"],
+  "reason": ["URL 포함", "금융 관련 키워드"],
   "created_at": "2026-05-21T10:00:00Z"
 }
 ```
 
-> `result` 가능 값: `"spam"` | `"suspicious"` | `"normal"`  
+> `label` 가능 값: `"spam"` | `"suspicious"` | `"normal"`  
+> `risk_level` 가능 값: `"high"` | `"medium"` | `"low"`  
 > `confidence`: 0.0 ~ 1.0
 
 **에러 응답:**
@@ -72,9 +86,10 @@ Body:
     {
       "id": 123,
       "input_type": "text",
-      "result": "spam",
+      "label": "spam",
+      "risk_level": "high",
       "confidence": 0.95,
-      "reasons": ["URL 포함"],
+      "reason": ["URL 포함"],
       "created_at": "2026-05-21T10:00:00Z"
     }
   ],
@@ -91,12 +106,13 @@ Body:
 
 Base URL: `{CONTAINER_APP_URL}` (환경변수로 관리)
 
-### POST /predict
+### POST /analyze
 
 ```
 Content-Type: application/json
 Body:
 {
+  "request_id": "<uuid>",
   "text": "전처리 없이 넘기는 원문 텍스트"
 }
 ```
@@ -104,13 +120,16 @@ Body:
 **응답:**
 ```json
 {
-  "result": "spam",
-  "confidence": 0.95,
-  "reasons": ["URL 포함", "금융 관련 키워드"]
+  "request_id": "<uuid>",
+  "label": "spam",
+  "risk_level": "high",
+  "confidence": 0.91,
+  "reason": ["URL 포함", "금융 관련 키워드 탐지"]
 }
 ```
 
-> `result` 가능 값: `"spam"` | `"suspicious"` | `"normal"`
+> `label` 가능 값: `"spam"` | `"suspicious"` | `"normal"`  
+> 파트 C는 파트 B 응답을 변환 없이 그대로 저장 및 전달
 
 ---
 
