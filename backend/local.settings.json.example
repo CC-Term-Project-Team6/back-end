@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AZURE_VISION_ENDPOINT": "<Azure AI Vision 엔드포인트 URL>",
+    "AZURE_VISION_KEY": "<Azure AI Vision API 키>",
+    "BLOB_CONNECTION_STRING": "<Azure Blob Storage 연결 문자열>",
+    "BLOB_CONTAINER_NAME": "images",
+    "SQL_CONNECTION_STRING": "<Azure SQL 연결 문자열 (Driver={ODBC Driver 18 for SQL Server};...)>",
+    "CONTAINER_APP_URL": "<Container App URL (배포 후 입력)>"
+  }
+}
