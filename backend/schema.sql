@@ -8,6 +8,7 @@ CREATE TABLE analyses (
     risk_level    VARCHAR(10),               -- 'high' | 'medium' | 'low'
     confidence    FLOAT,
     reason        NVARCHAR(MAX),             -- JSON 배열 문자열 ex) ["URL 포함", "금융 키워드"]
+    visibility    VARCHAR(10)    NOT NULL DEFAULT 'private',   -- 'public' | 'private'
     created_at    DATETIME2      DEFAULT GETDATE()
 );
 

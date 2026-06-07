@@ -22,6 +22,9 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
     content_type = req.headers.get("Content-Type", "")
     
     if "multipart/form-data" in content_type:
+        visibility = req.form.get("visibility", "private")
+        if visibility not in ("public", "private"):
+            visibility = "private"
         try:
             if "file" not in req.files:
                 return func.HttpResponse(
@@ -74,6 +77,9 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
         input_type = "text"
         blob_url = None
         text = body["text"]
+        visibility = body.get("visibility", "private")
+        if visibility not in ("public", "private"):
+            visibility = "private"
 
     if not text.strip():
         return func.HttpResponse(
@@ -104,31 +110,32 @@ def analyze(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
             mimetype="application/json",
         )
-    try:
-        conn = pyodbc.connect(os.environ["SQL_CONNECTION_STRING"])
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO analyses (input_type, original_text, blob_url, label, confidence, reason, risk_level)
-            OUTPUT INSERTED.id
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            input_type, text, blob_url, label, confidence, json.dumps(reason), risk_level,
-        )
-        record_id = cursor.fetchone()[0]
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error(f"SQL error: {e}")
-        return func.HttpResponse(
-            json.dumps({"error": "Database error"}),
-            status_code=500,
-            mimetype="application/json",
-        )
-    
+    if visibility == "public":
+        try:
+            conn = pyodbc.connect(os.environ["SQL_CONNECTION_STRING"])
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO analyses (input_type, original_text, blob_url, label, confidence, reason, risk_level, visibility)
+                OUTPUT INSERTED.id
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                input_type, text, blob_url, label, confidence, json.dumps(reason), risk_level, visibility,
+            )
+            record_id = cursor.fetchone()[0]
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logging.error(f"SQL error: {e}")
+            return func.HttpResponse(
+                json.dumps({"error": "Database error"}),
+                status_code=500,
+                mimetype="application/json",
+            )
+
     return func.HttpResponse(
         json.dumps(
-            {"id": record_id, "input_type": input_type, "label": label, "risk_level": risk_level, "confidence": confidence, "reason": reason},
+            {"input_type": input_type, "label": label, "risk_level": risk_level, "confidence": confidence, "reason": reason},
             ensure_ascii=False,
         ),
         mimetype="application/json",
@@ -156,7 +163,7 @@ def history(req: func.HttpRequest) -> func.HttpResponse:
 
         cursor.execute(
             """
-            SELECT id, input_type, original_text, label, risk_level, confidence, reason, created_at
+            SELECT id, input_type, original_text, label, risk_level, confidence, reason, visibility, created_at
             FROM analyses
             ORDER BY created_at DESC
             OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
